@@ -2,9 +2,10 @@ import { useDispatch, useSelector } from "react-redux";
 import { selectPokemon, removePokemonFromList } from "../features/pokemonSlice";
 import { useGetPokemonByIdQuery } from "../features/pokemonApi";
 
-const PokemonWithRTK = ({ id }) => {
+const PokemonWithRTK = ({ id, setPokemons, pokemons }) => {
     const { data, isLoading, error } = useGetPokemonByIdQuery(id);
     const dispatch = useDispatch();
+    const stateID = useSelector((state) => state.pokemon.selectedPokemon.id);
 
     if (isLoading) return <p>Loading...</p>;
     if (data) {
@@ -24,10 +25,20 @@ const PokemonWithRTK = ({ id }) => {
                     alt={`${data.name}+${data.sprites.front_shiny}`}
                     style={{ height: "5rem", width: "auto" }}
                 />
-                <button onClick={() => dispatch(selectPokemon(data))}>
-                    Select
+                <button
+                    onClick={() => dispatch(selectPokemon(data))}
+                    disabled={stateID === id}
+                >
+                    {stateID === id ? "Selected" : "Select"}
                 </button>
-                <button onClick={() => {}}>Remove From List</button>
+                <button
+                    onClick={() => {
+                        const res = pokemons.filter((el) => el !== id);
+                        setPokemons(res);
+                    }}
+                >
+                    Remove From List
+                </button>
             </div>
         );
     }

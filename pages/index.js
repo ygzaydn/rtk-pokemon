@@ -9,6 +9,8 @@ import SelectedPokemon from "@/src/components/selectedPokemon";
 import { useGetPokemonByIdQuery } from "@/src/features/pokemonApi";
 import { useEffect, useRef, useState } from "react";
 import PokemonWithRTK from "@/src/components/pokemonWithRTK";
+import PostWithRTK from "@/src/components/postWithRTK";
+import SelectedPost from "@/src/components/selectedPost";
 
 const inter = Inter({ subsets: ["latin"] });
 
@@ -18,10 +20,17 @@ function getRandomInt(max) {
 
 export default function Home() {
     const [pokemons, setPokemons] = useState([]);
+    const [postID, setPostID] = useState([]);
+    const [selectedPost, setSelectedPost] = useState(null);
+
     const dispatch = useDispatch();
     const state = useSelector((state) => state.pokemon);
+
     const text = useRef("");
     const text2 = useRef("");
+    const text3 = useRef("");
+
+    console.log(selectedPost);
 
     return (
         <>
@@ -60,7 +69,11 @@ export default function Home() {
                             <input ref={text} />
                             <button
                                 onClick={() =>
-                                    dispatch(fetchPokemon(text.current.value))
+                                    dispatch(
+                                        fetchPokemon(
+                                            parseInt(text.current.value)
+                                        )
+                                    )
                                 }
                             >
                                 Fetch this ID
@@ -68,7 +81,7 @@ export default function Home() {
                         </div>
                     </div>
 
-                    <div>
+                    <div style={{ margin: "0 2rem" }}>
                         <p>Fetching with RTK Query</p>
 
                         <button
@@ -86,8 +99,39 @@ export default function Home() {
                             <button
                                 onClick={() => {
                                     const newPokemons = [...pokemons];
-                                    newPokemons.push(text2.current.value);
+                                    newPokemons.push(
+                                        parseInt(text2.current.value)
+                                    );
                                     setPokemons(newPokemons);
+                                }}
+                            >
+                                Fetch this ID
+                            </button>
+                        </div>
+                    </div>
+
+                    <div style={{ margin: "0 2rem" }}>
+                        <p>Fetching posts with RTK Query</p>
+
+                        <button
+                            style={{ margin: ".5rem 0" }}
+                            onClick={() => {
+                                const newPostIDs = [...postID];
+                                newPostIDs.push(getRandomInt(100));
+                                setPostID(newPostIDs);
+                            }}
+                        >
+                            Fetch Random Post
+                        </button>
+                        <div>
+                            <input ref={text3} />
+                            <button
+                                onClick={() => {
+                                    const newPostIDs = [...postID];
+                                    newPostIDs.push(
+                                        parseInt(text3.current.value)
+                                    );
+                                    setPostID(newPostIDs);
                                 }}
                             >
                                 Fetch this ID
@@ -106,6 +150,15 @@ export default function Home() {
                     </div>
                 )}
 
+                {selectedPost && (
+                    <div>
+                        <SelectedPost
+                            {...selectedPost}
+                            setSelectedPost={setSelectedPost}
+                        />
+                    </div>
+                )}
+
                 <div>
                     {pokemons.length > 0 && (
                         <div>
@@ -118,7 +171,12 @@ export default function Home() {
                                 }}
                             >
                                 {pokemons.map((el) => (
-                                    <PokemonWithRTK key={el} id={el} />
+                                    <PokemonWithRTK
+                                        key={el}
+                                        id={el}
+                                        setPokemons={setPokemons}
+                                        pokemons={pokemons}
+                                    />
                                 ))}
                             </div>
                         </div>
@@ -141,6 +199,30 @@ export default function Home() {
                                         name={el.name}
                                         img={el.sprites.front_shiny}
                                         id={el.id}
+                                    />
+                                ))}
+                            </div>
+                        </div>
+                    )}
+                </div>
+                <div>
+                    {postID.length > 0 && (
+                        <div>
+                            <p>RTK Query PostID</p>
+                            <div
+                                style={{
+                                    display: "flex",
+                                    justifyContent: "center",
+                                    flexDirection: "column",
+                                }}
+                            >
+                                {postID.map((el) => (
+                                    <PostWithRTK
+                                        key={el}
+                                        id={el}
+                                        setPostID={setPostID}
+                                        setSelectedPost={setSelectedPost}
+                                        selectedPost={selectedPost}
                                     />
                                 ))}
                             </div>
