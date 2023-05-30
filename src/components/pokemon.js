@@ -20,7 +20,7 @@ const Pokemon = ({ name, img, id }) => {
             <img
                 src={img}
                 alt={`${name}+${img}`}
-                style={{ height: "5rem", width: "auto" }}
+                style={{ height: "7.5rem", width: "7.5rem", margin: "auto" }}
             />
             <button
                 disabled={id === stateID}

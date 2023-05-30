@@ -3,8 +3,9 @@ import { useGetPokemonByIdQuery } from "../features/pokemonApi";
 import { useGetPostByIdQuery } from "../features/postsApi";
 
 const PostWithRTK = ({ id, setPostID, setSelectedPost, selectedPost }) => {
-    const { data, isLoading, error } = useGetPostByIdQuery(id);
+    const { data, isLoading, error, isFetching } = useGetPostByIdQuery(id);
 
+    if (isFetching) return <p>Fetching...</p>;
     if (isLoading) return <p>Loading...</p>;
     if (data) {
         return (

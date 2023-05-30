@@ -30,8 +30,6 @@ export default function Home() {
     const text2 = useRef("");
     const text3 = useRef("");
 
-    console.log(selectedPost);
-
     return (
         <>
             <Head>
