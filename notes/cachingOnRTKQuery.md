@@ -5,6 +5,18 @@ One of the benefits that RTK Query gives us is the caching mechanism. With cachi
 On previous posts, we have [initialize RTK Query](), and also worked on [mutation operations on RTK Query](). In this post, we'll talk about caching mechanism on RTK Query.\
 This blog tries to give information about caching and how RTK Query handles it.
 
+- [RTK Query Caching Mechanism](#rtk-query-caching-mechanism)
+  - [Caching](#caching)
+  - [Caching on RTK Query](#caching-on-rtk-query)
+    - [Caching Mechanism Example](#caching-mechanism-example)
+  - [Manual Refetching](#manual-refetching)
+    - [Manual Refetch with Refetch](#manual-refetch-with-refetch)
+    - [Manuel Refetch with Initiate](#manuel-refetch-with-initiate)
+  - [Automated Refetching](#automated-refetching)
+    - [Tags](#tags)
+      - [Providing Tags](#providing-tags)
+      - [Invalidating Tags](#invalidating-tags)
+
 ## Caching
 
 Caching is the mechanism that keeping data in some resources by the motivation of serving the user if they need them. On the web, caching is keeping data that we've fetched from the server in case we need to use later on. By keeping the data, we may prevent additional requests on the server which results in decrease on server load.\
