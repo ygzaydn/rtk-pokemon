@@ -30,6 +30,15 @@ export default function Home() {
     const text2 = useRef("");
     const text3 = useRef("");
 
+    const state2 = useSelector((state) => state.pokemonApi);
+
+    useEffect(() => {
+        const interval = setInterval(() => {
+            console.log(state2);
+        }, 5000);
+        return () => clearInterval(interval);
+    }, [state2]);
+
     return (
         <>
             <Head>

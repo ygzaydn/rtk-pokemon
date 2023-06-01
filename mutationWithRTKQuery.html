@@ -1,0 +1,411 @@
+<!DOCTYPE html>
+    <html>
+    <head>
+        <meta charset="UTF-8">
+        <title>RTK Query Mutation Operation</title>
+        <style>
+/* From extension vscode.github */
+/*---------------------------------------------------------------------------------------------
+ *  Copyright (c) Microsoft Corporation. All rights reserved.
+ *  Licensed under the MIT License. See License.txt in the project root for license information.
+ *--------------------------------------------------------------------------------------------*/
+
+.vscode-dark img[src$=\#gh-light-mode-only],
+.vscode-light img[src$=\#gh-dark-mode-only] {
+	display: none;
+}
+
+</style>
+        <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex/dist/katex.min.css">
+<link href="https://cdn.jsdelivr.net/npm/katex-copytex@latest/dist/katex-copytex.min.css" rel="stylesheet" type="text/css">
+        <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/Microsoft/vscode/extensions/markdown-language-features/media/markdown.css">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/Microsoft/vscode/extensions/markdown-language-features/media/highlight.css">
+<style>
+            body {
+                font-family: -apple-system, BlinkMacSystemFont, 'Segoe WPC', 'Segoe UI', system-ui, 'Ubuntu', 'Droid Sans', sans-serif;
+                font-size: 14px;
+                line-height: 1.6;
+            }
+        </style>
+        <style>
+.task-list-item {
+    list-style-type: none;
+}
+
+.task-list-item-checkbox {
+    margin-left: -20px;
+    vertical-align: middle;
+    pointer-events: none;
+}
+</style>
+        
+    </head>
+    <body class="vscode-body vscode-light">
+        <h1 id="rtk-query-mutation-operation">RTK Query Mutation Operation</h1>
+<p>On our <a href="https://erolyagizaydin.vercel.app/blog/20">previous blog</a>, we've successfully set up our RTK Query API and connect it redux. We also show how to fetch daha and how fetch mechanism works.\</p>
+<p>In this blog, we'll try to <code>mutate</code> operations of RTK Query serves us. Mutation operations are basically operations that aims to change data on the backend. You can think them as <em>PUT, UPDATE, PATCH, DELETE</em> operations of REST APIs. \</p>
+<p>In order to operate <code>mutate</code> operations, we have to add mutate endpoints to our RTK Query API. Let's start with this step.</p>
+<ul>
+<li><a href="#rtk-query-mutation-operation">RTK Query Mutation Operation</a>
+<ul>
+<li><a href="#adding-mutate-operation-to-rtk-query-api">Adding Mutate Operation to RTK Query API</a></li>
+<li><a href="#creating-react-components">Creating React Components</a></li>
+<li><a href="#adding-mutation-functions">Adding Mutation Functions</a></li>
+</ul>
+</li>
+</ul>
+<h2 id="adding-mutate-operation-to-rtk-query-api">Adding Mutate Operation to RTK Query API</h2>
+<p>Similar to queries, we need to add mutate operations on <code>endpoints</code> field of our API. Let's add code that sends <code>PATCH</code> request to our backend.</p>
+<pre><code class="language-js"><span class="hljs-comment">// src/features/postsApi.js</span>
+
+<span class="hljs-keyword">import</span> { createApi, fetchBaseQuery } <span class="hljs-keyword">from</span> <span class="hljs-string">&quot;@reduxjs/toolkit/query/react&quot;</span>;
+
+<span class="hljs-keyword">export</span> <span class="hljs-keyword">const</span> postsApi = <span class="hljs-title function_">createApi</span>({
+    <span class="hljs-attr">reducerPath</span>: <span class="hljs-string">&quot;postApi&quot;</span>,
+    <span class="hljs-attr">baseQuery</span>: <span class="hljs-title function_">fetchBaseQuery</span>({
+        <span class="hljs-attr">baseUrl</span>: <span class="hljs-string">&quot;https://jsonplaceholder.typicode.com/&quot;</span>,
+    }),
+    <span class="hljs-attr">endpoints</span>: <span class="hljs-function">(<span class="hljs-params">builder</span>) =&gt;</span> ({
+        <span class="hljs-attr">getPostById</span>: builder.<span class="hljs-title function_">query</span>({
+            <span class="hljs-attr">query</span>: <span class="hljs-function">(<span class="hljs-params">id</span>) =&gt;</span> ({
+                <span class="hljs-attr">url</span>: <span class="hljs-string">`posts/<span class="hljs-subst">${id}</span>`</span>,
+            }),
+        }),
+        <span class="hljs-attr">updatePost</span>: builder.<span class="hljs-title function_">mutation</span>({
+            <span class="hljs-attr">query</span>: <span class="hljs-function">(<span class="hljs-params">{ id, ...patch }</span>) =&gt;</span> ({
+                <span class="hljs-attr">url</span>: <span class="hljs-string">`posts/<span class="hljs-subst">${id}</span>`</span>,
+                <span class="hljs-attr">method</span>: <span class="hljs-string">&quot;PATCH&quot;</span>,
+                <span class="hljs-attr">body</span>: patch,
+            }),
+        }),
+    }),
+});
+
+<span class="hljs-keyword">export</span> <span class="hljs-keyword">const</span> { useGetPostByIdQuery, useUpdatePostMutation } = postsApi;
+</code></pre>
+<p>As you can see above, adding <code>mutation</code> operation is very similar to queries. You basically give your endpoint, method to operate and the data you want to change. \</p>
+<p>Before moving on, I want to create some react components to demonstrate the endpoints that we've built.</p>
+<h2 id="creating-react-components">Creating React Components</h2>
+<p>First thing we'll add is the component to fetch new posts for us. We'll have 2 different ways to get posts. First one is the posts with random id, second one is for dedicated id's that we'll provide. \</p>
+<p>To begin with, I'll add button for random fetching.</p>
+<pre><code class="language-jsx"><span class="hljs-comment">// pages/index.js</span>
+
+<span class="hljs-keyword">import</span> { <span class="hljs-title class_">Inter</span> } <span class="hljs-keyword">from</span> <span class="hljs-string">&quot;next/font/google&quot;</span>;
+<span class="hljs-keyword">import</span> styles <span class="hljs-keyword">from</span> <span class="hljs-string">&quot;@/styles/Home.module.css&quot;</span>;
+<span class="hljs-keyword">import</span> { useState } <span class="hljs-keyword">from</span> <span class="hljs-string">&quot;react&quot;</span>;
+
+<span class="hljs-keyword">const</span> inter = <span class="hljs-title class_">Inter</span>({ <span class="hljs-attr">subsets</span>: [<span class="hljs-string">&quot;latin&quot;</span>] });
+
+<span class="hljs-keyword">function</span> <span class="hljs-title function_">getRandomInt</span>(<span class="hljs-params">max</span>) {
+    <span class="hljs-keyword">return</span> <span class="hljs-title class_">Math</span>.<span class="hljs-title function_">floor</span>(<span class="hljs-title class_">Math</span>.<span class="hljs-title function_">random</span>() * max);
+}
+
+<span class="hljs-keyword">export</span> <span class="hljs-keyword">default</span> <span class="hljs-keyword">function</span> <span class="hljs-title function_">Home</span>(<span class="hljs-params"></span>) {
+    <span class="hljs-keyword">const</span> [postID, setPostID] = <span class="hljs-title function_">useState</span>([]);
+
+    <span class="hljs-keyword">return</span> (
+            <span class="language-xml"><span class="hljs-tag">&lt;<span class="hljs-name">main</span> <span class="hljs-attr">className</span>=<span class="hljs-string">{</span>`${<span class="hljs-attr">styles.main</span>} ${<span class="hljs-attr">inter.className</span>}`}&gt;</span>
+                    <span class="hljs-tag">&lt;<span class="hljs-name">div</span> <span class="hljs-attr">style</span>=<span class="hljs-string">{{</span> <span class="hljs-attr">margin:</span> &quot;<span class="hljs-attr">0</span> <span class="hljs-attr">2rem</span>&quot; }}&gt;</span>
+                        <span class="hljs-tag">&lt;<span class="hljs-name">p</span>&gt;</span>Fetching posts with RTK Query<span class="hljs-tag">&lt;/<span class="hljs-name">p</span>&gt;</span>
+
+                        <span class="hljs-tag">&lt;<span class="hljs-name">button</span>
+                            <span class="hljs-attr">style</span>=<span class="hljs-string">{{</span> <span class="hljs-attr">margin:</span> &quot;<span class="hljs-attr">.5rem</span> <span class="hljs-attr">0</span>&quot; }}
+                            <span class="hljs-attr">onClick</span>=<span class="hljs-string">{()</span> =&gt;</span> {
+                                const newPostIDs = [...postID];
+                                newPostIDs.push(getRandomInt(100));
+                                setPostID(newPostIDs);
+                            }}
+                        &gt;
+                            Fetch Random Post
+                        <span class="hljs-tag">&lt;/<span class="hljs-name">button</span>&gt;</span>
+                    <span class="hljs-tag">&lt;/<span class="hljs-name">div</span>&gt;</span>
+            <span class="hljs-tag">&lt;/<span class="hljs-name">main</span>&gt;</span></span>
+    );
+}
+</code></pre>
+<p>We basically keep the ID's that we're interested on a state. Later on we'll fetch those ID's on <code>postWithRTK</code> component. Whenever user clicks the button, new random ID will be added to postID state. \</p>
+<p>As a second step, lets add an input field, and another button for dedicated id's.</p>
+<pre><code class="language-jsx"><span class="hljs-comment">// pages/index.js</span>
+
+<span class="hljs-keyword">import</span> { <span class="hljs-title class_">Inter</span> } <span class="hljs-keyword">from</span> <span class="hljs-string">&quot;next/font/google&quot;</span>;
+<span class="hljs-keyword">import</span> styles <span class="hljs-keyword">from</span> <span class="hljs-string">&quot;@/styles/Home.module.css&quot;</span>;
+<span class="hljs-keyword">import</span> { useState, useRef } <span class="hljs-keyword">from</span> <span class="hljs-string">&quot;react&quot;</span>;
+
+<span class="hljs-keyword">const</span> inter = <span class="hljs-title class_">Inter</span>({ <span class="hljs-attr">subsets</span>: [<span class="hljs-string">&quot;latin&quot;</span>] });
+
+<span class="hljs-keyword">function</span> <span class="hljs-title function_">getRandomInt</span>(<span class="hljs-params">max</span>) {
+    <span class="hljs-keyword">return</span> <span class="hljs-title class_">Math</span>.<span class="hljs-title function_">floor</span>(<span class="hljs-title class_">Math</span>.<span class="hljs-title function_">random</span>() * max);
+}
+
+<span class="hljs-keyword">export</span> <span class="hljs-keyword">default</span> <span class="hljs-keyword">function</span> <span class="hljs-title function_">Home</span>(<span class="hljs-params"></span>) {
+    <span class="hljs-keyword">const</span> [postID, setPostID] = <span class="hljs-title function_">useState</span>([]);
+    <span class="hljs-keyword">const</span> text = <span class="hljs-title function_">useRef</span>(<span class="hljs-string">&quot;&quot;</span>);
+
+
+    <span class="hljs-keyword">return</span> (
+            <span class="language-xml"><span class="hljs-tag">&lt;<span class="hljs-name">main</span> <span class="hljs-attr">className</span>=<span class="hljs-string">{</span>`${<span class="hljs-attr">styles.main</span>} ${<span class="hljs-attr">inter.className</span>}`}&gt;</span>
+                    <span class="hljs-tag">&lt;<span class="hljs-name">div</span> <span class="hljs-attr">style</span>=<span class="hljs-string">{{</span> <span class="hljs-attr">margin:</span> &quot;<span class="hljs-attr">0</span> <span class="hljs-attr">2rem</span>&quot; }}&gt;</span>
+                        <span class="hljs-tag">&lt;<span class="hljs-name">p</span>&gt;</span>Fetching posts with RTK Query<span class="hljs-tag">&lt;/<span class="hljs-name">p</span>&gt;</span>
+
+                        <span class="hljs-tag">&lt;<span class="hljs-name">button</span>
+                            <span class="hljs-attr">style</span>=<span class="hljs-string">{{</span> <span class="hljs-attr">margin:</span> &quot;<span class="hljs-attr">.5rem</span> <span class="hljs-attr">0</span>&quot; }}
+                            <span class="hljs-attr">onClick</span>=<span class="hljs-string">{()</span> =&gt;</span> {
+                                const newPostIDs = [...postID];
+                                newPostIDs.push(getRandomInt(100));
+                                setPostID(newPostIDs);
+                            }}
+                        &gt;
+                            Fetch Random Post
+                        <span class="hljs-tag">&lt;/<span class="hljs-name">button</span>&gt;</span>
+                        <span class="hljs-tag">&lt;<span class="hljs-name">div</span>&gt;</span>
+                            <span class="hljs-tag">&lt;<span class="hljs-name">input</span> <span class="hljs-attr">ref</span>=<span class="hljs-string">{text}</span> /&gt;</span>
+                            <span class="hljs-tag">&lt;<span class="hljs-name">button</span>
+                                <span class="hljs-attr">onClick</span>=<span class="hljs-string">{()</span> =&gt;</span> {
+                                    const newPostIDs = [...postID];
+                                    newPostIDs.push(
+                                        parseInt(text.current.value)
+                                    );
+                                    setPostID(newPostIDs);
+                                }}
+                            &gt;
+                                Fetch this ID
+                            <span class="hljs-tag">&lt;/<span class="hljs-name">button</span>&gt;</span>
+                        <span class="hljs-tag">&lt;/<span class="hljs-name">div</span>&gt;</span>
+                    <span class="hljs-tag">&lt;/<span class="hljs-name">div</span>&gt;</span>
+            <span class="hljs-tag">&lt;/<span class="hljs-name">main</span>&gt;</span></span>
+    );
+}
+</code></pre>
+<p>We keep track dedicated id with <code>useRef</code> hook and add it to our state. Now we're ready to create a component for our posts and show it to user. Let's crate a new component called <code>postWithRTK</code> and add the code below.</p>
+<pre><code class="language-jsx"><span class="hljs-comment">// components/postWithRTK.js</span>
+<span class="hljs-keyword">import</span> { useGetPostByIdQuery } <span class="hljs-keyword">from</span> <span class="hljs-string">&quot;../features/postsApi&quot;</span>;
+
+<span class="hljs-keyword">const</span> <span class="hljs-title function_">PostWithRTK</span> = (<span class="hljs-params">{ id, setPostID }</span>) =&gt; {
+    <span class="hljs-keyword">const</span> { data, isLoading, error, isFetching } = <span class="hljs-title function_">useGetPostByIdQuery</span>(id);
+
+    <span class="hljs-keyword">if</span> (isFetching) <span class="hljs-keyword">return</span> <span class="language-xml"><span class="hljs-tag">&lt;<span class="hljs-name">p</span>&gt;</span>Fetching...<span class="hljs-tag">&lt;/<span class="hljs-name">p</span>&gt;</span></span>;
+    <span class="hljs-keyword">if</span> (isLoading) <span class="hljs-keyword">return</span> <span class="language-xml"><span class="hljs-tag">&lt;<span class="hljs-name">p</span>&gt;</span>Loading...<span class="hljs-tag">&lt;/<span class="hljs-name">p</span>&gt;</span></span>;
+    <span class="hljs-keyword">if</span> (data) {
+        <span class="hljs-keyword">return</span> (
+            <span class="language-xml"><span class="hljs-tag">&lt;<span class="hljs-name">div</span>
+                <span class="hljs-attr">style</span>=<span class="hljs-string">{{</span>
+                    <span class="hljs-attr">display:</span> &quot;<span class="hljs-attr">flex</span>&quot;,
+                    <span class="hljs-attr">justifyContent:</span> &quot;<span class="hljs-attr">flex-start</span>&quot;,
+                    <span class="hljs-attr">alignItems:</span> &quot;<span class="hljs-attr">flex-start</span>&quot;,
+                    <span class="hljs-attr">flexDirection:</span> &quot;<span class="hljs-attr">column</span>&quot;,
+                    <span class="hljs-attr">margin:</span> &quot;<span class="hljs-attr">.5rem</span>&quot;,
+                }}
+            &gt;</span>
+                <span class="hljs-tag">&lt;<span class="hljs-name">p</span>&gt;</span>Post ID: {data.id}<span class="hljs-tag">&lt;/<span class="hljs-name">p</span>&gt;</span>
+                <span class="hljs-tag">&lt;<span class="hljs-name">p</span>&gt;</span>Title: {data.title}<span class="hljs-tag">&lt;/<span class="hljs-name">p</span>&gt;</span>
+                <span class="hljs-tag">&lt;<span class="hljs-name">p</span>&gt;</span>Post: {data.body}<span class="hljs-tag">&lt;/<span class="hljs-name">p</span>&gt;</span>
+                <span class="hljs-tag">&lt;<span class="hljs-name">div</span>&gt;</span>
+                    <span class="hljs-tag">&lt;<span class="hljs-name">button</span>
+                        <span class="hljs-attr">onClick</span>=<span class="hljs-string">{()</span> =&gt;</span> {
+                            setPostID((prev) =&gt; prev.filter((el) =&gt; el !== id));
+                        }}
+                    &gt;
+                        Remove From List
+                    <span class="hljs-tag">&lt;/<span class="hljs-name">button</span>&gt;</span>
+                <span class="hljs-tag">&lt;/<span class="hljs-name">div</span>&gt;</span>
+            <span class="hljs-tag">&lt;/<span class="hljs-name">div</span>&gt;</span></span>
+        );
+    }
+};
+
+<span class="hljs-keyword">export</span> <span class="hljs-keyword">default</span> <span class="hljs-title class_">PostWithRTK</span>;
+</code></pre>
+<p>Now, whenever a new ID is added to our postID state, we'll render a new <code>PostWithRTK</code> component to show it to our user. When a new <code>PostWithRTK</code> is rendered, it'll fetch given id from the server immediately. During fetching operation, it'll show <em>Fetching...</em> text. If the related query is on the <code>queries</code> list of the RTK Query, you'll see <em>Loading...</em> text. Whenever the data is available, you'll see the data itself.  \</p>
+<p>Next step should be adding the component to the <code>index.js</code>. I won't write the all code below, just the code that we'll add is on below. \</p>
+<pre><code class="language-jsx"><span class="hljs-comment">// pages/index.js</span>
+...
+&lt;div&gt;
+    {postID.<span class="hljs-property">length</span> &gt; <span class="hljs-number">0</span> &amp;&amp; (
+        <span class="language-xml"><span class="hljs-tag">&lt;<span class="hljs-name">div</span>&gt;</span>
+            <span class="hljs-tag">&lt;<span class="hljs-name">p</span>&gt;</span>RTK Query PostID<span class="hljs-tag">&lt;/<span class="hljs-name">p</span>&gt;</span>
+            <span class="hljs-tag">&lt;<span class="hljs-name">div</span>
+                <span class="hljs-attr">style</span>=<span class="hljs-string">{{</span>
+                    <span class="hljs-attr">display:</span> &quot;<span class="hljs-attr">flex</span>&quot;,
+                    <span class="hljs-attr">justifyContent:</span> &quot;<span class="hljs-attr">center</span>&quot;,
+                    <span class="hljs-attr">flexDirection:</span> &quot;<span class="hljs-attr">column</span>&quot;,
+                }}
+            &gt;</span>
+                {postID.map((el) =&gt; (
+                    <span class="hljs-tag">&lt;<span class="hljs-name">PostWithRTK</span>
+                        <span class="hljs-attr">key</span>=<span class="hljs-string">{el}</span>
+                        <span class="hljs-attr">id</span>=<span class="hljs-string">{el}</span>
+                        <span class="hljs-attr">setPostID</span>=<span class="hljs-string">{setPostID}</span>
+                    /&gt;</span>
+                ))}
+            <span class="hljs-tag">&lt;/<span class="hljs-name">div</span>&gt;</span>
+        <span class="hljs-tag">&lt;/<span class="hljs-name">div</span>&gt;</span></span>
+    )}
+&lt;/div&gt;
+...
+</code></pre>
+<p>Now we're able to render new posts on screen. \</p>
+<p>For mutation operations, I want to select a post from the screen, and try to change it's ID. So let's add new state called <code>selectedPost</code> and pass it's information to <code>PostWithRTK</code> component.</p>
+<pre><code class="language-jsx"><span class="hljs-comment">// pages/index.js</span>
+...
+<span class="hljs-keyword">const</span> [selectedPost, setSelectedPost] = <span class="hljs-title function_">useState</span>(<span class="hljs-literal">null</span>)
+
+&lt;div&gt;
+    {postID.<span class="hljs-property">length</span> &gt; <span class="hljs-number">0</span> &amp;&amp; (
+        <span class="language-xml"><span class="hljs-tag">&lt;<span class="hljs-name">div</span>&gt;</span>
+            <span class="hljs-tag">&lt;<span class="hljs-name">p</span>&gt;</span>RTK Query PostID<span class="hljs-tag">&lt;/<span class="hljs-name">p</span>&gt;</span>
+            <span class="hljs-tag">&lt;<span class="hljs-name">div</span>
+                <span class="hljs-attr">style</span>=<span class="hljs-string">{{</span>
+                    <span class="hljs-attr">display:</span> &quot;<span class="hljs-attr">flex</span>&quot;,
+                    <span class="hljs-attr">justifyContent:</span> &quot;<span class="hljs-attr">center</span>&quot;,
+                    <span class="hljs-attr">flexDirection:</span> &quot;<span class="hljs-attr">column</span>&quot;,
+                }}
+            &gt;</span>
+                {postID.map((el) =&gt; (
+                    <span class="hljs-tag">&lt;<span class="hljs-name">PostWithRTK</span>
+                        <span class="hljs-attr">key</span>=<span class="hljs-string">{el}</span>
+                        <span class="hljs-attr">id</span>=<span class="hljs-string">{el}</span>
+                        <span class="hljs-attr">setPostID</span>=<span class="hljs-string">{setPostID}</span>
+                        <span class="hljs-attr">setSelectedPost</span>=<span class="hljs-string">{setSelectedPost}</span>
+                        <span class="hljs-attr">selectedPost</span>=<span class="hljs-string">{selectedPost}</span>
+                    /&gt;</span>
+                ))}
+            <span class="hljs-tag">&lt;/<span class="hljs-name">div</span>&gt;</span>
+        <span class="hljs-tag">&lt;/<span class="hljs-name">div</span>&gt;</span></span>
+    )}
+&lt;/div&gt;
+...
+
+</code></pre>
+<p>And, add the following code to <code>postwithRTK</code> component.</p>
+<pre><code class="language-jsx"><span class="hljs-comment">// components/postWithRTK.js</span>
+ &lt;button
+    style={{ <span class="hljs-attr">margin</span>: <span class="hljs-string">&quot;0 2rem 0 0&quot;</span> }}
+    onClick={<span class="hljs-function">() =&gt;</span> <span class="hljs-title function_">setSelectedPost</span>(data)}
+    disabled={selectedPost?.<span class="hljs-property">id</span> === id}
+&gt;
+    {selectedPost?.<span class="hljs-property">id</span> === id ? <span class="hljs-string">&quot;Selected&quot;</span> : <span class="hljs-string">&quot;Select&quot;</span>}
+&lt;/button&gt;
+
+</code></pre>
+<p>To show selected post on the screen, let's create a new component called <code>selectedPost</code>.</p>
+<pre><code class="language-jsx"><span class="hljs-comment">// components/selectedPost.js</span>
+<span class="hljs-keyword">const</span> <span class="hljs-title function_">SelectedPost</span> = (<span class="hljs-params">{ title, body, id, setSelectedPost }</span>) =&gt; {
+
+    <span class="hljs-keyword">return</span> (
+        <span class="language-xml"><span class="hljs-tag">&lt;<span class="hljs-name">div</span>
+            <span class="hljs-attr">style</span>=<span class="hljs-string">{{</span>
+                <span class="hljs-attr">display:</span> &quot;<span class="hljs-attr">flex</span>&quot;,
+                <span class="hljs-attr">justifyContent:</span> &quot;<span class="hljs-attr">center</span>&quot;,
+                <span class="hljs-attr">flexDirection:</span> &quot;<span class="hljs-attr">column</span>&quot;,
+            }}
+        &gt;</span>
+            <span class="hljs-tag">&lt;<span class="hljs-name">p</span>&gt;</span>Post ID: {id}<span class="hljs-tag">&lt;/<span class="hljs-name">p</span>&gt;</span>
+            <span class="hljs-tag">&lt;<span class="hljs-name">p</span>&gt;</span>Title: {title}<span class="hljs-tag">&lt;/<span class="hljs-name">p</span>&gt;</span>
+            <span class="hljs-tag">&lt;<span class="hljs-name">p</span>&gt;</span>Post: {body}<span class="hljs-tag">&lt;/<span class="hljs-name">p</span>&gt;</span>
+            <span class="hljs-tag">&lt;<span class="hljs-name">div</span>&gt;</span>
+                <span class="hljs-tag">&lt;<span class="hljs-name">button</span>
+                    <span class="hljs-attr">onClick</span>=<span class="hljs-string">{()</span> =&gt;</span> setSelectedPost(null)}
+                    style={{ marginBottom: &quot;1rem&quot; }}
+                &gt;
+                    Deselect
+                <span class="hljs-tag">&lt;/<span class="hljs-name">button</span>&gt;</span>
+            <span class="hljs-tag">&lt;/<span class="hljs-name">div</span>&gt;</span>
+        <span class="hljs-tag">&lt;/<span class="hljs-name">div</span>&gt;</span></span>
+    );
+};
+
+<span class="hljs-keyword">export</span> <span class="hljs-keyword">default</span> <span class="hljs-title class_">SelectedPost</span>;
+</code></pre>
+<p>And connect it to <code>index.js</code></p>
+<pre><code class="language-jsx"><span class="hljs-comment">// pages/index.js</span>
+
+...
+{selectedPost &amp;&amp; (
+    <span class="language-xml"><span class="hljs-tag">&lt;<span class="hljs-name">div</span>&gt;</span>
+        <span class="hljs-tag">&lt;<span class="hljs-name">SelectedPost</span>
+            {<span class="hljs-attr">...selectedPost</span>}
+            <span class="hljs-attr">setSelectedPost</span>=<span class="hljs-string">{setSelectedPost}</span>
+        /&gt;</span>
+    <span class="hljs-tag">&lt;/<span class="hljs-name">div</span>&gt;</span></span>
+)}
+...
+
+</code></pre>
+<p>Now it's time to add mutation functions to our application.</p>
+<h2 id="adding-mutation-functions">Adding Mutation Functions</h2>
+<p>As we've planned, we'll try to change ID of selected posts. So it's the best place to use mutation hook on <code>SelectedPost</code> component. Finalized code should look like below. Please check the code, after that I'll try to explain what we've done.</p>
+<pre><code class="language-jsx"><span class="hljs-comment">// components/SelectedPost.js</span>
+
+<span class="hljs-keyword">import</span> { useState } <span class="hljs-keyword">from</span> <span class="hljs-string">&quot;react&quot;</span>;
+<span class="hljs-keyword">import</span> { useUpdatePostMutation } <span class="hljs-keyword">from</span> <span class="hljs-string">&quot;../features/postsApi&quot;</span>;
+
+<span class="hljs-keyword">const</span> <span class="hljs-title function_">SelectedPost</span> = (<span class="hljs-params">{ title, body, id, setSelectedPost }</span>) =&gt; {
+    <span class="hljs-keyword">const</span> [postID, setPostID] = <span class="hljs-title function_">useState</span>(id);
+
+    <span class="hljs-keyword">const</span> [updatePost, { isLoading, isSuccess, isError } = result] =
+        <span class="hljs-title function_">useUpdatePostMutation</span>();
+
+    <span class="hljs-keyword">return</span> (
+        <span class="language-xml"><span class="hljs-tag">&lt;<span class="hljs-name">div</span>
+            <span class="hljs-attr">style</span>=<span class="hljs-string">{{</span>
+                <span class="hljs-attr">display:</span> &quot;<span class="hljs-attr">flex</span>&quot;,
+                <span class="hljs-attr">justifyContent:</span> &quot;<span class="hljs-attr">center</span>&quot;,
+                <span class="hljs-attr">flexDirection:</span> &quot;<span class="hljs-attr">column</span>&quot;,
+            }}
+        &gt;</span>
+            <span class="hljs-tag">&lt;<span class="hljs-name">p</span>&gt;</span>Post ID: {id}<span class="hljs-tag">&lt;/<span class="hljs-name">p</span>&gt;</span>
+            <span class="hljs-tag">&lt;<span class="hljs-name">p</span>&gt;</span>Title: {title}<span class="hljs-tag">&lt;/<span class="hljs-name">p</span>&gt;</span>
+            <span class="hljs-tag">&lt;<span class="hljs-name">p</span>&gt;</span>Post: {body}<span class="hljs-tag">&lt;/<span class="hljs-name">p</span>&gt;</span>
+            <span class="hljs-tag">&lt;<span class="hljs-name">div</span>&gt;</span>
+                <span class="hljs-tag">&lt;<span class="hljs-name">button</span>
+                    <span class="hljs-attr">onClick</span>=<span class="hljs-string">{()</span> =&gt;</span> setSelectedPost(null)}
+                    style={{ marginBottom: &quot;1rem&quot; }}
+                &gt;
+                    Deselect
+                <span class="hljs-tag">&lt;/<span class="hljs-name">button</span>&gt;</span>
+
+                <span class="hljs-tag">&lt;<span class="hljs-name">div</span>&gt;</span>
+                    <span class="hljs-tag">&lt;<span class="hljs-name">p</span>&gt;</span>Change ID of the post<span class="hljs-tag">&lt;/<span class="hljs-name">p</span>&gt;</span>
+                    <span class="hljs-tag">&lt;<span class="hljs-name">input</span>
+                        <span class="hljs-attr">value</span>=<span class="hljs-string">{postID}</span>
+                        <span class="hljs-attr">onChange</span>=<span class="hljs-string">{(e)</span> =&gt;</span> setPostID(e.target.value)}
+                    /&gt;
+                    <span class="hljs-tag">&lt;<span class="hljs-name">button</span>
+                        <span class="hljs-attr">onClick</span>=<span class="hljs-string">{()</span> =&gt;</span>
+                            updatePost({
+                                id,
+                                patch: JSON.stringify({ id: postID }),
+                            })
+                        }
+                    &gt;
+                        Change
+                    <span class="hljs-tag">&lt;/<span class="hljs-name">button</span>&gt;</span>
+                    <span class="hljs-tag">&lt;<span class="hljs-name">span</span>&gt;</span>
+                        {isSuccess &amp;&amp; &quot;Patch request successed&quot;}
+                        {isLoading &amp;&amp; &quot;Patch request is processing&quot;}
+                        {isError &amp;&amp; &quot;Error during patch request&quot;}
+                    <span class="hljs-tag">&lt;/<span class="hljs-name">span</span>&gt;</span>
+                <span class="hljs-tag">&lt;/<span class="hljs-name">div</span>&gt;</span>
+            <span class="hljs-tag">&lt;/<span class="hljs-name">div</span>&gt;</span>
+        <span class="hljs-tag">&lt;/<span class="hljs-name">div</span>&gt;</span></span>
+    );
+};
+
+<span class="hljs-keyword">export</span> <span class="hljs-keyword">default</span> <span class="hljs-title class_">SelectedPost</span>;
+
+</code></pre>
+<p>We basically add a text input to enter our ID, connect this input to a new state, and a onChange listener to keep state alive. Those are the basic react operations. The valuable piece of codes are RTK Query codes. \</p>
+<p>Unlike query operations, mutate operations has a <strong>trigger</strong> function to make them happen. Remember, by default query operations runs whenever the component renders (this is not an obligation, you can use <code>skip</code> parameter to prevent this action, but this is another post's topic), on the other hand you have to run <strong>trigger</strong> function to operate mutate operation. In our case, <code>updatePost</code> is our <strong>trigger</strong> function. \</p>
+<p>We can send the mutate operation by following function:</p>
+<pre><code class="language-js"><span class="hljs-title function_">updatePost</span>({
+    id,
+    <span class="hljs-attr">patch</span>: <span class="hljs-title class_">JSON</span>.<span class="hljs-title function_">stringify</span>({ <span class="hljs-attr">id</span>: postID }),
+})
+</code></pre>
+<p>First parameter is the ID of our post, second parameter is the body. \</p>
+<p>We also have <code>isLoading</code>, <code>isSuccess</code> and <code>isError</code> parameters just like on the query hooks. So by using RTK Query, that is how you operate mutation operations.</p>
+
+        <script async src="https://cdn.jsdelivr.net/npm/katex-copytex@latest/dist/katex-copytex.min.js"></script>
+        
+    </body>
+    </html>

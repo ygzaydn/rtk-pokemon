@@ -4,13 +4,19 @@ export const postsApi = createApi({
     reducerPath: "postApi",
     baseQuery: fetchBaseQuery({
         baseUrl: "https://jsonplaceholder.typicode.com/",
+        headers: {
+            "Cache-Control":
+                "no-store, no-cache, max-age=0, must-revalidate, proxy-revalidate",
+        },
     }),
     tagTypes: ["Post"],
     endpoints: (builder) => ({
         getPostById: builder.query({
-            query: (id) => `posts/${id}`,
+            query: (id) => ({
+                url: `posts/${id}`,
+            }),
             providesTags: (result, error, arg) =>
-                result ? [{ type: "Post", id: result.id }, "Post"] : ["Post"],
+                result ? ["Post"] : ["Post"],
         }),
         updatePost: builder.mutation({
             query: ({ id, ...patch }) => ({
@@ -19,7 +25,8 @@ export const postsApi = createApi({
                 body: patch,
             }),
             invalidatesTags: (result, error, arg) => [
-                { type: "Post", id: arg.id },
+                "Post",
+                //{ type: "Post", id: arg.id % 2 },
             ],
         }),
     }),
